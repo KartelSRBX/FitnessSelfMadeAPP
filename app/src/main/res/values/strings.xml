@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Fitness Assistant</string>
+
+    <string name="nav_plans">Plans</string>
+    <string name="nav_work">Work</string>
+    <string name="nav_schedule">Schedule</string>
+    <string name="nav_health">Health</string>
+    <string name="nav_nutrition">Nutrition</string>
+    <string name="nav_analytics">Analytics</string>
+
+    <string name="voice_input_hint">Удерживайте, чтобы говорить</string>
+</resources>
