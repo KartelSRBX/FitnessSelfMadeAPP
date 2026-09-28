@@ -45,7 +45,9 @@ import com.kartel.fitness.core.ai.GeminiNanoAvailability
 import com.kartel.fitness.core.ai.GeminiNanoClient
 import com.kartel.fitness.core.calendar.CalendarBridge
 import com.kartel.fitness.core.nutrition.FoodRepository
+import com.kartel.fitness.core.ui.GradientHeader
 import com.kartel.fitness.feature.voice.VoiceFabButton
+import androidx.compose.material.icons.filled.Psychology
 
 /**
  * Тестовый экран ядра мини-ИИ (roadmap п.1). Ввести фразу можно текстом здесь же,
@@ -79,6 +81,8 @@ fun AiTestScreen() {
 
     LaunchedEffect(Unit) { viewModel.checkAvailability() }
 
+    Column(modifier = Modifier.fillMaxSize()) {
+    GradientHeader(title = "AI", subtitle = "Ядро мини-ИИ: текст или голос", icon = Icons.Filled.Psychology)
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -158,6 +162,7 @@ fun AiTestScreen() {
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
         )
+    }
     }
 }
 

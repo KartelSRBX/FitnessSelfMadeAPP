@@ -38,6 +38,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.kartel.fitness.core.health.HealthConnectBridge
+import com.kartel.fitness.core.ui.GradientHeader
 
 /**
  * Модуль Health (roadmap п.6): только чтение Health Connect — шаги/сон/пульс.
@@ -62,6 +63,8 @@ fun HealthScreen() {
 
     LaunchedEffect(Unit) { viewModel.checkStatusAndRefresh() }
 
+    Column(modifier = Modifier.fillMaxSize()) {
+    GradientHeader(title = "Health", subtitle = "Шаги, сон, пульс из Health Connect", icon = Icons.Filled.Favorite)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -92,6 +95,7 @@ fun HealthScreen() {
                 value = state.heartRate?.let { "$it уд/мин" } ?: "нет данных",
             )
         }
+    }
     }
 }
 

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -25,7 +26,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +51,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.kartel.fitness.FitnessApp
 import com.kartel.fitness.core.calendar.CalendarBridge
 import com.kartel.fitness.core.data.work.WorkEntity
+import com.kartel.fitness.core.ui.GradientFab
+import com.kartel.fitness.core.ui.GradientHeader
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -80,11 +82,12 @@ fun WorkScreen() {
         calendarPermissionGranted = result.values.all { it }
     }
 
+    Column(modifier = Modifier.fillMaxSize()) {
+    GradientHeader(title = "Work", subtitle = "Задачи, дедлайны, статусы", icon = Icons.Filled.Checklist)
     Scaffold(
+        modifier = Modifier.weight(1f),
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Добавить задачу")
-            }
+            GradientFab(onClick = { showAddDialog = true }, icon = Icons.Filled.Add, contentDescription = "Добавить задачу")
         }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -135,6 +138,7 @@ fun WorkScreen() {
                 }
             }
         }
+    }
     }
 
     if (showAddDialog) {

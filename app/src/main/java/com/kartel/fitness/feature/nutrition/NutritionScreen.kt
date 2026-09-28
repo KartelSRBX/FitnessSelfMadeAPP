@@ -35,9 +35,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.compose.material.icons.filled.Restaurant
 import com.kartel.fitness.core.data.nutrition.MealLogEntity
 import com.kartel.fitness.core.nutrition.FoodItem
 import com.kartel.fitness.core.nutrition.FoodRepository
+import com.kartel.fitness.core.ui.GradientHeader
 import kotlin.math.roundToInt
 
 /**
@@ -62,7 +64,9 @@ fun NutritionScreen() {
     val results = if (query.isBlank()) emptyList() else viewModel.search(query)
     val todayMeals by viewModel.todayMeals.collectAsStateWithLifecycle()
 
-    Scaffold { innerPadding ->
+    Column(modifier = Modifier.fillMaxSize()) {
+    GradientHeader(title = "Nutrition", subtitle = "Поиск продукта и учёт КБЖУ", icon = Icons.Filled.Restaurant)
+    Scaffold(modifier = Modifier.weight(1f)) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
             OutlinedTextField(
                 value = query,
@@ -123,6 +127,7 @@ fun NutritionScreen() {
                 }
             }
         }
+    }
     }
 
     selectedFood?.let { food ->

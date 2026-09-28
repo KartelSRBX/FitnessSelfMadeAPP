@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,6 +31,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.kartel.fitness.FitnessApp
 import com.kartel.fitness.core.export.DataExporter
 import com.kartel.fitness.core.health.HealthConnectBridge
+import com.kartel.fitness.core.ui.GradientHeader
 import com.kartel.fitness.core.ui.charts.SimpleBarChart
 import kotlinx.coroutines.launch
 
@@ -63,6 +65,8 @@ fun AnalyticsScreen() {
     val healthSteps by viewModel.healthSteps.collectAsStateWithLifecycle()
     val healthAvailable by viewModel.healthAvailable.collectAsStateWithLifecycle()
 
+    Column(modifier = Modifier.fillMaxSize()) {
+    GradientHeader(title = "Analytics", subtitle = "Графики и экспорт данных", icon = Icons.Filled.Analytics)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -118,6 +122,7 @@ fun AnalyticsScreen() {
                 )
             }
         }
+    }
     }
 }
 

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -23,7 +24,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +53,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.kartel.fitness.core.calendar.CalendarBridge
 import com.kartel.fitness.core.calendar.CalendarEvent
+import com.kartel.fitness.core.ui.GradientFab
+import com.kartel.fitness.core.ui.GradientHeader
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -87,11 +89,12 @@ fun ScheduleScreen() {
     val events by viewModel.events.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
 
+    Column(modifier = Modifier.fillMaxSize()) {
+    GradientHeader(title = "Schedule", subtitle = "События и дедлайны в одном месте", icon = Icons.Filled.CalendarMonth)
     Scaffold(
+        modifier = Modifier.weight(1f),
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Добавить событие")
-            }
+            GradientFab(onClick = { showAddDialog = true }, icon = Icons.Filled.Add, contentDescription = "Добавить событие")
         }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -135,6 +138,7 @@ fun ScheduleScreen() {
                 }
             }
         }
+    }
     }
 
     if (showAddDialog) {

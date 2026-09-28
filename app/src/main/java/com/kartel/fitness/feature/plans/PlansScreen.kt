@@ -12,11 +12,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -42,6 +42,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.kartel.fitness.FitnessApp
 import com.kartel.fitness.core.data.plans.PlanEntity
+import com.kartel.fitness.core.ui.GradientFab
+import com.kartel.fitness.core.ui.GradientHeader
 
 /**
  * Модуль Plans: долгосрочные личные цели без дат (roadmap п.3).
@@ -61,11 +63,12 @@ fun PlansScreen() {
     var showAddDialog by remember { mutableStateOf(false) }
     var planForProgress by remember { mutableStateOf<PlanEntity?>(null) }
 
+    Column(modifier = Modifier.fillMaxSize()) {
+    GradientHeader(title = "Plans", subtitle = "Долгосрочные цели без дат", icon = Icons.Filled.Flag)
     Scaffold(
+        modifier = Modifier.weight(1f),
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Добавить цель")
-            }
+            GradientFab(onClick = { showAddDialog = true }, icon = Icons.Filled.Add, contentDescription = "Добавить цель")
         }
     ) { innerPadding ->
         if (plans.isEmpty()) {
@@ -93,6 +96,7 @@ fun PlansScreen() {
                 }
             }
         }
+    }
     }
 
     if (showAddDialog) {
