@@ -2,6 +2,8 @@ package com.kartel.fitness.core.data
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.kartel.fitness.core.data.nutrition.MealLogDao
+import com.kartel.fitness.core.data.nutrition.MealLogEntity
 import com.kartel.fitness.core.data.plans.PlanDao
 import com.kartel.fitness.core.data.plans.PlanEntity
 import com.kartel.fitness.core.data.work.WorkDao
@@ -12,12 +14,16 @@ import com.kartel.fitness.core.data.work.WorkEntity
  * Health и Schedule читают/пишут в основном через системные Health Connect
  * и Calendar Provider — здесь хранится только то, что этим системам не принадлежит.
  *
- * TODO: по мере реализации Nutrition добавлять его entities и DAO сюда же.
  * Миграции пока не пишутся (ранняя разработка) — FitnessApp использует
  * fallbackToDestructiveMigration(), см. TODO там же.
  */
-@Database(entities = [PlanEntity::class, WorkEntity::class], version = 2, exportSchema = false)
+@Database(
+    entities = [PlanEntity::class, WorkEntity::class, MealLogEntity::class],
+    version = 3,
+    exportSchema = false,
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun planDao(): PlanDao
     abstract fun workDao(): WorkDao
+    abstract fun mealLogDao(): MealLogDao
 }
