@@ -3,6 +3,7 @@ package com.kartel.fitness.feature.ai
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.mlkit.genai.common.DownloadStatus
+import com.kartel.fitness.core.ai.ActionRouter
 import com.kartel.fitness.core.ai.GeminiNanoAvailability
 import com.kartel.fitness.core.ai.GeminiNanoClient
 import com.kartel.fitness.core.ai.ModuleIntent
@@ -20,10 +21,15 @@ data class AiUiState(
     val downloadError: String? = null,
     val parsing: Boolean = false,
     val lastResult: ModuleIntent? = null,
+    val executionMessage: String? = null,
+    val executionNeedsManual: Boolean = false,
 )
 
 /** Тестовый экран ядра мини-ИИ (roadmap п.1) — проверка устройства + разбор фраз без голоса пока. */
-class AiViewModel(private val client: GeminiNanoClient) : ViewModel() {
+class AiViewModel(
+    private val client: GeminiNanoClient,
+    private val actionRouter: ActionRouter,
+) : ViewModel() {
 
     private val _state = MutableStateFlow(AiUiState())
     val state: StateFlow<AiUiState> = _state.asStateFlow()
@@ -62,9 +68,18 @@ class AiViewModel(private val client: GeminiNanoClient) : ViewModel() {
     fun parse(text: String) {
         if (text.isBlank()) return
         viewModelScope.launch {
-            _state.value = _state.value.copy(parsing = true)
+            _state.value = _state.value.copy(parsing = true, executionMessage = null)
             val result = client.parseVoiceCommand(text)
-            _state.value = _state.value.copy(parsing = false, lastResult = result)
+            val execution = actionRouter.execute(result)
+            _state.value = _state.value.copy(
+                parsing = false,
+                lastResult = result,
+                executionMessage = when (execution) {
+                    is ActionRouter.Result.Success -> execution.message
+                    is ActionRouter.Result.NeedsManualInput -> execution.message
+                },
+                executionNeedsManual = execution is ActionRouter.Result.NeedsManualInput,
+            )
         }
     }
 

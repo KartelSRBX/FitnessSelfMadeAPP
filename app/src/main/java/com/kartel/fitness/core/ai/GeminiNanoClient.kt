@@ -5,6 +5,7 @@ import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation
 import com.google.mlkit.genai.prompt.GenerativeModel
 import com.google.mlkit.genai.prompt.generationConfig
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import org.json.JSONObject
 
@@ -51,15 +52,27 @@ class GeminiNanoClient {
     }
 
     private fun buildPrompt(text: String): String = """
-        Ты - классификатор команд для личного Android-ассистента с пятью модулями:
-        PLANS (долгосрочные личные цели без дат), WORK (рабочие задачи с дедлайнами),
-        SCHEDULE (встречи/события с конкретным временем), HEALTH (данные о здоровье,
-        сюда почти никогда не нужно писать), NUTRITION (приёмы пищи).
+        Ты - классификатор команд для личного Android-ассистента. Разбери фразу пользователя
+        и верни ТОЛЬКО валидный JSON без пояснений и без markdown-разметки, строго в одном
+        из следующих форматов - в зависимости от того, к какому модулю относится фраза:
 
-        Верни ТОЛЬКО валидный JSON без пояснений и без markdown-разметки, строго в формате:
-        {"module": "PLANS|WORK|SCHEDULE|HEALTH|NUTRITION|null", "confidence": 0.0-1.0, "fields": {}}
+        Долгосрочная личная цель без даты:
+        {"module": "PLANS", "confidence": 0.0-1.0, "fields": {"title": "...", "description": "..."}}
 
-        Если фраза не подходит ни под один модуль или ты не уверен - верни module: null и confidence: 0.
+        Рабочая задача (может быть с дедлайном):
+        {"module": "WORK", "confidence": 0.0-1.0, "fields": {"title": "...", "project": "...", "deadlineDate": "YYYY-MM-DD или пусто"}}
+
+        Встреча/событие с конкретной датой и временем:
+        {"module": "SCHEDULE", "confidence": 0.0-1.0, "fields": {"title": "...", "date": "YYYY-MM-DD", "time": "HH:MM"}}
+
+        Приём пищи:
+        {"module": "NUTRITION", "confidence": 0.0-1.0, "fields": {"food": "название продукта на русском в единственном числе, как в словаре БЖУ (например курица, рис, яблоко)", "grams": "число граммов, если не указано - 100"}}
+
+        HEALTH используется только для чтения данных - для таких фраз, а также если фраза не
+        подходит ни под один модуль или ты не уверен, верни:
+        {"module": null, "confidence": 0, "fields": {}}
+
+        Сегодняшняя дата: ${LocalDate.now()}. Используй её, чтобы посчитать даты вида "завтра"/"в пятницу".
 
         Фраза пользователя: "$text"
     """.trimIndent()

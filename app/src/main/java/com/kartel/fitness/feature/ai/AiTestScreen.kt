@@ -31,14 +31,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.kartel.fitness.FitnessApp
+import com.kartel.fitness.core.ai.ActionRouter
 import com.kartel.fitness.core.ai.AppModule
 import com.kartel.fitness.core.ai.GeminiNanoAvailability
 import com.kartel.fitness.core.ai.GeminiNanoClient
+import com.kartel.fitness.core.calendar.CalendarBridge
+import com.kartel.fitness.core.nutrition.FoodRepository
 
 /**
  * Тестовый экран ядра мини-ИИ (roadmap п.1). Временный — до голосового ввода
@@ -47,8 +52,23 @@ import com.kartel.fitness.core.ai.GeminiNanoClient
  */
 @Composable
 fun AiTestScreen() {
+    val context = LocalContext.current
+    val app = context.applicationContext as FitnessApp
     val viewModel: AiViewModel = viewModel(
-        factory = viewModelFactory { initializer { AiViewModel(GeminiNanoClient()) } }
+        factory = viewModelFactory {
+            initializer {
+                AiViewModel(
+                    GeminiNanoClient(),
+                    ActionRouter(
+                        app.database.planDao(),
+                        app.database.workDao(),
+                        app.database.mealLogDao(),
+                        FoodRepository(context),
+                        CalendarBridge(context),
+                    ),
+                )
+            }
+        }
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
@@ -101,25 +121,23 @@ fun AiTestScreen() {
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
-                        if (result.fields.isNotEmpty()) {
-                            result.fields.forEach { (key, value) ->
-                                Text("• $key: $value", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    } else {
+                    }
+                    state.executionMessage?.let { message ->
+                        Icon(
+                            if (state.executionNeedsManual) Icons.Filled.Error else Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = if (state.executionNeedsManual) MaterialTheme.colorScheme.tertiary else Color(0xFF6FCF97),
+                        )
                         Text(
-                            "Не распознано уверенно — по roadmap здесь должен появиться ручной выбор модуля " +
-                                "(добавим вместе с голосовым вводом).",
+                            message,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = if (state.executionNeedsManual) MaterialTheme.colorScheme.tertiary else Color(0xFF6FCF97),
                         )
                     }
-                    result.rawModelOutput?.let {
-                        Text(
-                            "Сырой ответ модели:\n$it",
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
+                    if (result.fields.isNotEmpty()) {
+                        result.fields.forEach { (key, value) ->
+                            Text("• $key: $value", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
             }
