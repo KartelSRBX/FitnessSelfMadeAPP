@@ -33,6 +33,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -73,6 +74,10 @@ import com.kartel.fitness.core.notifications.ReminderScheduler
 import com.kartel.fitness.core.ui.GradientFab
 import com.kartel.fitness.core.ui.GradientHeader
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -103,6 +108,7 @@ fun WorkScreen() {
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var checklistTask by remember { mutableStateOf<WorkEntity?>(null) }
+    var viewMode by remember { mutableStateOf(WorkViewMode.LIST) }
     var calendarPermissionGranted by remember { mutableStateOf(viewModel.hasCalendarPermission) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -183,6 +189,22 @@ fun WorkScreen() {
                 }
             }
 
+            Row(
+                modifier = Modifier.padding(16.dp, 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = viewMode == WorkViewMode.LIST,
+                    onClick = { viewMode = WorkViewMode.LIST },
+                    label = { Text("Список") },
+                )
+                FilterChip(
+                    selected = viewMode == WorkViewMode.DAYS,
+                    onClick = { viewMode = WorkViewMode.DAYS },
+                    label = { Text("По дням") },
+                )
+            }
+
             if (tasks.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
@@ -190,7 +212,7 @@ fun WorkScreen() {
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
-            } else {
+            } else if (viewMode == WorkViewMode.LIST) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp, 0.dp, 16.dp, 88.dp),
@@ -205,6 +227,33 @@ fun WorkScreen() {
                             onOpenChecklist = { checklistTask = task },
                             modifier = Modifier.animateItem(),
                         )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp, 0.dp, 16.dp, 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    groupTasksByDay(tasks).forEach { (dayLabel, dayTasks) ->
+                        item(key = "header-$dayLabel") {
+                            Text(
+                                dayLabel,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                            )
+                        }
+                        items(dayTasks, key = { it.id }) { task ->
+                            WorkCard(
+                                task = task,
+                                viewModel = viewModel,
+                                onCycleStatus = { viewModel.cycleStatus(task) },
+                                onDelete = { viewModel.deleteTask(task) },
+                                onOpenChecklist = { checklistTask = task },
+                                modifier = Modifier.animateItem().padding(bottom = 4.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -229,6 +278,36 @@ fun WorkScreen() {
 
 private val dateFormat = SimpleDateFormat("d MMM, HH:mm", Locale("ru"))
 private val plainDateFormat = SimpleDateFormat("d MMM yyyy", Locale("ru"))
+
+private enum class WorkViewMode { LIST, DAYS }
+
+/**
+ * Группирует задачи по дню дедлайна: "Сегодня"/"Завтра"/"Вчера" отдельными подписями,
+ * остальные даты — по месяцу и числу, дни идут по возрастанию; задачи без дедлайна —
+ * отдельным контейнером в конце (roadmap-запрос "контейнеры распределения по дням").
+ */
+private fun groupTasksByDay(tasks: List<WorkEntity>): List<Pair<String, List<WorkEntity>>> {
+    val zone = ZoneId.systemDefault()
+    val today = LocalDate.now()
+    val dayLabelFormat = DateTimeFormatter.ofPattern("d MMMM, EEEE", Locale("ru"))
+
+    val withDate = tasks
+        .filter { it.deadlineMillis != null }
+        .groupBy { Instant.ofEpochMilli(it.deadlineMillis!!).atZone(zone).toLocalDate() }
+        .toSortedMap()
+        .map { (date, dayTasks) ->
+            val label = when (date) {
+                today -> "Сегодня"
+                today.plusDays(1) -> "Завтра"
+                today.minusDays(1) -> "Вчера"
+                else -> date.format(dayLabelFormat).replaceFirstChar { it.uppercase() }
+            }
+            label to dayTasks
+        }
+
+    val withoutDate = tasks.filter { it.deadlineMillis == null }
+    return if (withoutDate.isEmpty()) withDate else withDate + ("Без даты" to withoutDate)
+}
 
 @Composable
 private fun WorkCard(
