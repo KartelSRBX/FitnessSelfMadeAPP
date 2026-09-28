@@ -62,6 +62,7 @@ fun AnalyticsScreen() {
 
     val nutritionWeek by viewModel.nutritionWeek.collectAsStateWithLifecycle()
     val workStatus by viewModel.workStatus.collectAsStateWithLifecycle()
+    val workCompletedWeek by viewModel.workCompletedWeek.collectAsStateWithLifecycle()
     val healthSteps by viewModel.healthSteps.collectAsStateWithLifecycle()
     val healthAvailable by viewModel.healthAvailable.collectAsStateWithLifecycle()
 
@@ -110,6 +111,10 @@ fun AnalyticsScreen() {
 
         ChartSection(title = "Work — задачи по статусам") {
             SimpleBarChart(data = workStatus, barColor = MaterialTheme.colorScheme.secondary)
+        }
+
+        ChartSection(title = "Work — выполнено по дням за неделю") {
+            SimpleBarChart(data = workCompletedWeek, barColor = MaterialTheme.colorScheme.tertiary)
         }
 
         ChartSection(title = "Health — шаги за неделю") {

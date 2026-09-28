@@ -33,6 +33,9 @@ class AnalyticsViewModel(
     private val _workStatus = MutableStateFlow<List<ChartPoint>>(emptyList())
     val workStatus: StateFlow<List<ChartPoint>> = _workStatus.asStateFlow()
 
+    private val _workCompletedWeek = MutableStateFlow<List<ChartPoint>>(emptyList())
+    val workCompletedWeek: StateFlow<List<ChartPoint>> = _workCompletedWeek.asStateFlow()
+
     private val _healthSteps = MutableStateFlow<List<ChartPoint>>(emptyList())
     val healthSteps: StateFlow<List<ChartPoint>> = _healthSteps.asStateFlow()
 
@@ -71,6 +74,19 @@ class AnalyticsViewModel(
             ChartPoint(status.label.take(8), tasks.count { it.status == status }.toFloat())
         }
         _workStatus.value = points
+
+        // Трек выполнения: сколько задач было отмечено DONE в каждый из последних 7 дней.
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now()
+        val startDate = today.minusDays(6)
+        val completedPoints = (0..6).map { offset ->
+            val date = startDate.plusDays(offset.toLong())
+            val dayStart = date.atStartOfDay(zone).toInstant().toEpochMilli()
+            val dayEnd = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val count = tasks.count { it.completedAt != null && it.completedAt in dayStart until dayEnd }
+            ChartPoint(dayLabel(date), count.toFloat())
+        }
+        _workCompletedWeek.value = completedPoints
     }
 
     private suspend fun loadHealthSteps() {
@@ -119,6 +135,7 @@ class AnalyticsViewModel(
                     put("project", w.project)
                     put("status", w.status.name)
                     put("deadlineMillis", w.deadlineMillis ?: JSONObject.NULL)
+                    put("completedAt", w.completedAt ?: JSONObject.NULL)
                     put("createdAt", w.createdAt)
                     put("updatedAt", w.updatedAt)
                 }

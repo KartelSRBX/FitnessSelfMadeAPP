@@ -21,7 +21,7 @@ import com.kartel.fitness.core.data.work.WorkEntity
  */
 @Database(
     entities = [PlanEntity::class, WorkEntity::class, MealLogEntity::class, WorkChecklistItem::class],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

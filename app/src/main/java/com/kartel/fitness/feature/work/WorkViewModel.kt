@@ -52,7 +52,12 @@ class WorkViewModel(
 
     fun cycleStatus(task: WorkEntity) {
         viewModelScope.launch {
-            val updated = task.copy(status = task.status.next(), updatedAt = System.currentTimeMillis())
+            val nextStatus = task.status.next()
+            val updated = task.copy(
+                status = nextStatus,
+                updatedAt = System.currentTimeMillis(),
+                completedAt = if (nextStatus == WorkStatus.DONE) System.currentTimeMillis() else null,
+            )
             dao.update(updated)
             // Задача сделана или снова в работе — напоминание о дедлайне больше не актуально/пересоздастся.
             if (updated.status == WorkStatus.DONE) {

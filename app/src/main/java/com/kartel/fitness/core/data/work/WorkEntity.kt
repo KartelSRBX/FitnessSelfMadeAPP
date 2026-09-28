@@ -27,6 +27,8 @@ data class WorkEntity(
     val calendarEventId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
+    /** Момент, когда статус стал DONE — трек выполнения задач для аналитики. null, если не завершена. */
+    val completedAt: Long? = null,
 )
 
 class WorkStatusConverter {
