@@ -25,6 +25,7 @@ import com.kartel.fitness.feature.health.HealthScreen
 import com.kartel.fitness.feature.nutrition.NutritionScreen
 import com.kartel.fitness.feature.plans.PlansScreen
 import com.kartel.fitness.feature.schedule.ScheduleScreen
+import com.kartel.fitness.feature.timer.TimerScreen
 import com.kartel.fitness.feature.work.WorkScreen
 
 @Composable
@@ -44,6 +45,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             composable(Destination.NUTRITION.route) { NutritionScreen() }
             composable(Destination.ANALYTICS.route) { AnalyticsScreen() }
             composable(Destination.AI.route) { AiTestScreen() }
+            composable(Destination.TIMER.route) { TimerScreen() }
         }
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.kartel.fitness.R
 
@@ -23,4 +24,5 @@ enum class Destination(
     NUTRITION("nutrition", R.string.nav_nutrition, Icons.Filled.Restaurant),
     ANALYTICS("analytics", R.string.nav_analytics, Icons.Filled.Analytics),
     AI("ai", R.string.nav_ai, Icons.Filled.Psychology),
+    TIMER("timer", R.string.nav_timer, Icons.Filled.Timer),
 }

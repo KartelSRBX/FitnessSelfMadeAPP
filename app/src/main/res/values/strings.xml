@@ -8,6 +8,7 @@
     <string name="nav_nutrition">Nutrition</string>
     <string name="nav_analytics">Analytics</string>
     <string name="nav_ai">AI</string>
+    <string name="nav_timer">Timer</string>
 
     <string name="voice_input_hint">Удерживайте, чтобы говорить</string>
 </resources>
