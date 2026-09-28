@@ -2,6 +2,7 @@ package com.kartel.fitness.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -10,6 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -50,10 +53,14 @@ private fun BottomNavBar(navController: NavHostController) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
+    // 7 вкладок тесно помещаются в одну строку — подпись показываем только у выбранной
+    // вкладки (адаптивно освобождает место остальным), и всегда в одну строку без переноса.
     NavigationBar {
         Destination.entries.forEach { destination ->
+            val selected = currentRoute == destination.route
             NavigationBarItem(
-                selected = currentRoute == destination.route,
+                selected = selected,
+                alwaysShowLabel = false,
                 onClick = {
                     navController.navigate(destination.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
@@ -63,8 +70,15 @@ private fun BottomNavBar(navController: NavHostController) {
                         restoreState = true
                     }
                 },
-                icon = { Icon(destination.icon, contentDescription = null) },
-                label = { Text(stringResource(destination.labelRes)) },
+                icon = { Icon(destination.icon, contentDescription = stringResource(destination.labelRes)) },
+                label = {
+                    Text(
+                        stringResource(destination.labelRes),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                    )
+                },
             )
         }
     }

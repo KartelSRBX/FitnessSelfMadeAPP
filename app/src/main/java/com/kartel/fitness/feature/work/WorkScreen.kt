@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -18,8 +19,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -51,6 +55,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.kartel.fitness.FitnessApp
 import com.kartel.fitness.core.calendar.CalendarBridge
 import com.kartel.fitness.core.data.work.WorkEntity
+import com.kartel.fitness.core.data.work.WorkStatus
 import com.kartel.fitness.core.ui.GradientFab
 import com.kartel.fitness.core.ui.GradientHeader
 import java.text.SimpleDateFormat
@@ -133,6 +138,7 @@ fun WorkScreen() {
                             task = task,
                             onCycleStatus = { viewModel.cycleStatus(task) },
                             onDelete = { viewModel.deleteTask(task) },
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -155,9 +161,15 @@ fun WorkScreen() {
 private val dateFormat = SimpleDateFormat("d MMM yyyy", Locale("ru"))
 
 @Composable
-private fun WorkCard(task: WorkEntity, onCycleStatus: () -> Unit, onDelete: () -> Unit) {
+private fun WorkCard(task: WorkEntity, onCycleStatus: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+    val (statusContainer, statusContent, statusIcon) = when (task.status) {
+        WorkStatus.TODO -> Triple(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant, null)
+        WorkStatus.IN_PROGRESS -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, Icons.Filled.HourglassTop)
+        WorkStatus.DONE -> Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, Icons.Filled.CheckCircle)
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -179,7 +191,16 @@ private fun WorkCard(task: WorkEntity, onCycleStatus: () -> Unit, onDelete: () -
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AssistChip(onClick = onCycleStatus, label = { Text(task.status.label) })
+                AssistChip(
+                    onClick = onCycleStatus,
+                    label = { Text(task.status.label) },
+                    leadingIcon = statusIcon?.let { icon -> { Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp)) } },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = statusContainer,
+                        labelColor = statusContent,
+                        leadingIconContentColor = statusContent,
+                    ),
+                )
                 if (task.project.isNotBlank()) {
                     SuggestionChip(onClick = {}, label = { Text(task.project) })
                 }

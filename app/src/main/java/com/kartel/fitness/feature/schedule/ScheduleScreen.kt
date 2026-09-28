@@ -133,7 +133,11 @@ fun ScheduleScreen() {
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(events, key = { it.id }) { event ->
-                        EventCard(event = event, onDelete = { viewModel.deleteEvent(event) })
+                        EventCard(
+                            event = event,
+                            onDelete = { viewModel.deleteEvent(event) },
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
             }
@@ -155,9 +159,9 @@ fun ScheduleScreen() {
 private val dateTimeFormat = SimpleDateFormat("d MMM, HH:mm", Locale("ru"))
 
 @Composable
-private fun EventCard(event: CalendarEvent, onDelete: () -> Unit) {
+private fun EventCard(event: CalendarEvent, onDelete: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Row(
@@ -167,7 +171,11 @@ private fun EventCard(event: CalendarEvent, onDelete: () -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(event.title, style = MaterialTheme.typography.titleMedium)
-                Text(dateTimeFormat.format(event.startMillis), style = MaterialTheme.typography.labelMedium)
+                Text(
+                    dateTimeFormat.format(event.startMillis),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
                 if (event.description.isNotBlank()) {
                     Text(
                         event.description,

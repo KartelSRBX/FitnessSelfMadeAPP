@@ -120,7 +120,11 @@ fun NutritionScreen() {
                     } else {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(todayMeals, key = { it.id }) { meal ->
-                                MealRow(meal = meal, onDelete = { viewModel.deleteMeal(meal) })
+                                MealRow(
+                                    meal = meal,
+                                    onDelete = { viewModel.deleteMeal(meal) },
+                                    modifier = Modifier.animateItem(),
+                                )
                             }
                         }
                     }
@@ -163,9 +167,9 @@ private fun FoodResultRow(food: FoodItem, onClick: () -> Unit) {
 }
 
 @Composable
-private fun MealRow(meal: MealLogEntity, onDelete: () -> Unit) {
+private fun MealRow(meal: MealLogEntity, onDelete: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Row(
@@ -174,8 +178,16 @@ private fun MealRow(meal: MealLogEntity, onDelete: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                val portionLabel = if (meal.isEstimate) "оценка ИИ" else "${meal.grams}г"
-                Text("${meal.foodName} · $portionLabel", style = MaterialTheme.typography.titleSmall)
+                Text(meal.foodName, style = MaterialTheme.typography.titleSmall)
+                if (meal.isEstimate) {
+                    Text(
+                        "оценка ИИ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                } else {
+                    Text("${meal.grams}г", style = MaterialTheme.typography.labelSmall)
+                }
                 Text(
                     "%.0f ккал · Б %.1f · Ж %.1f · У %.1f".format(
                         meal.calories, meal.protein, meal.fat, meal.carbs

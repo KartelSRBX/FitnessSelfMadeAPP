@@ -1,16 +1,21 @@
 package com.kartel.fitness.feature.plans
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.AlertDialog
@@ -34,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +50,9 @@ import com.kartel.fitness.FitnessApp
 import com.kartel.fitness.core.data.plans.PlanEntity
 import com.kartel.fitness.core.ui.GradientFab
 import com.kartel.fitness.core.ui.GradientHeader
+import com.kartel.fitness.ui.theme.Blue
+import com.kartel.fitness.ui.theme.Lilac
+import com.kartel.fitness.ui.theme.Purple
 
 /**
  * Модуль Plans: долгосрочные личные цели без дат (roadmap п.3).
@@ -92,6 +101,7 @@ fun PlansScreen() {
                         plan = plan,
                         onClick = { planForProgress = plan },
                         onDelete = { viewModel.deletePlan(plan) },
+                        modifier = Modifier.animateItem(),
                     )
                 }
             }
@@ -122,9 +132,21 @@ fun PlansScreen() {
 }
 
 @Composable
-private fun PlanCard(plan: PlanEntity, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun PlanCard(plan: PlanEntity, onClick: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = plan.progressPercent / 100f,
+        animationSpec = tween(durationMillis = 500),
+        label = "planProgress",
+    )
+    // Цвет прогресса едет по палитре синий -> фиолетовый -> сиреневый вместе с заполнением.
+    val progressColor = when {
+        plan.progressPercent >= 100 -> Lilac
+        plan.progressPercent >= 50 -> lerp(Purple, Lilac, (plan.progressPercent - 50) / 50f)
+        else -> lerp(Blue, Purple, plan.progressPercent / 50f)
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         onClick = onClick,
     ) {
@@ -151,16 +173,25 @@ private fun PlanCard(plan: PlanEntity, onClick: () -> Unit, onDelete: () -> Unit
                 )
             }
             LinearProgressIndicator(
-                progress = { plan.progressPercent / 100f },
+                progress = { animatedProgress },
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                color = MaterialTheme.colorScheme.primary,
+                color = progressColor,
                 trackColor = MaterialTheme.colorScheme.surface,
             )
-            Text(
-                "${plan.progressPercent}%" + if (plan.lastProgressNote.isNotBlank()) " · ${plan.lastProgressNote}" else "",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                if (plan.progressPercent >= 100) {
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = Lilac,
+                        modifier = Modifier.size(16.dp).padding(end = 4.dp),
+                    )
+                }
+                Text(
+                    "${plan.progressPercent}%" + if (plan.lastProgressNote.isNotBlank()) " · ${plan.lastProgressNote}" else "",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
         }
     }
 }
