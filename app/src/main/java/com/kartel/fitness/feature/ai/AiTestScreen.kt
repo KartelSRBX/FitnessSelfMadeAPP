@@ -1,6 +1,7 @@
 package com.kartel.fitness.feature.ai
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,11 +45,12 @@ import com.kartel.fitness.core.ai.GeminiNanoAvailability
 import com.kartel.fitness.core.ai.GeminiNanoClient
 import com.kartel.fitness.core.calendar.CalendarBridge
 import com.kartel.fitness.core.nutrition.FoodRepository
+import com.kartel.fitness.feature.voice.VoiceFabButton
 
 /**
- * Тестовый экран ядра мини-ИИ (roadmap п.1). Временный — до голосового ввода
- * это единственный способ проверить, что Gemini Nano реально работает на устройстве.
- * Голос сюда подключится позже, разбор фразы в JSON уже настоящий.
+ * Тестовый экран ядра мини-ИИ (roadmap п.1). Ввести фразу можно текстом здесь же,
+ * либо голосом через плавающую кнопку внизу справа (roadmap п.2) — оба пути ведут
+ * в один и тот же пайплайн GeminiNanoClient -> ActionRouter.
  */
 @Composable
 fun AiTestScreen() {
@@ -77,11 +79,16 @@ fun AiTestScreen() {
 
     LaunchedEffect(Unit) { viewModel.checkAvailability() }
 
-    Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        AvailabilityCard(state = state, onCheck = { viewModel.checkAvailability() }, onDownload = { viewModel.downloadModel() })
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+                .padding(bottom = 72.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            AvailabilityCard(state = state, onCheck = { viewModel.checkAvailability() }, onDownload = { viewModel.downloadModel() })
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -90,7 +97,7 @@ fun AiTestScreen() {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Проверить разбор фразы", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Пока без голоса — просто напиши фразу как для одного из модулей, например " +
+                    "Напиши фразу как для одного из модулей, например " +
                         "«хочу выучить испанский» или «съел 200 грамм риса»",
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -144,6 +151,13 @@ fun AiTestScreen() {
                 }
             }
         }
+        }
+
+        VoiceFabButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        )
     }
 }
 
