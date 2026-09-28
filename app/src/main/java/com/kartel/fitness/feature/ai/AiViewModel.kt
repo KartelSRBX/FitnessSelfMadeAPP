@@ -70,7 +70,7 @@ class AiViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(parsing = true, executionMessage = null)
             val result = client.parseVoiceCommand(text)
-            val execution = actionRouter.execute(result)
+            val execution = actionRouter.execute(result, text)
             _state.value = _state.value.copy(
                 parsing = false,
                 lastResult = result,

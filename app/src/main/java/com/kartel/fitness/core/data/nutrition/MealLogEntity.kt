@@ -19,4 +19,6 @@ data class MealLogEntity(
     val fat: Double,
     val carbs: Double,
     val loggedAt: Long = System.currentTimeMillis(),
+    /** true, если КБЖУ — оценка Gemini Nano по свободному тексту, а не из базы USDA. */
+    val isEstimate: Boolean = false,
 )

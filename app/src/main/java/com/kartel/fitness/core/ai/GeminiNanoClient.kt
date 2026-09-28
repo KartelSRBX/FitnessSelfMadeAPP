@@ -51,6 +51,45 @@ class GeminiNanoClient {
         return parseResponse(raw)
     }
 
+    /**
+     * Fallback для Nutrition, когда в локальной базе нет совпадения (roadmap п.7):
+     * просим саму модель оценить суммарную пищевую ценность произвольного описания
+     * приёма пищи целиком, включая составные блюда из нескольких компонентов.
+     */
+    suspend fun estimateNutrition(description: String): NutritionEstimate? {
+        val raw = try {
+            client().generateContent(buildNutritionEstimatePrompt(description)).candidates.firstOrNull()?.text
+        } catch (e: Exception) {
+            null
+        } ?: return null
+
+        val cleaned = raw.trim()
+            .removePrefix("```json").removePrefix("```")
+            .removeSuffix("```").trim()
+        return try {
+            val obj = JSONObject(cleaned)
+            NutritionEstimate(
+                calories = obj.optDouble("calories", 0.0),
+                protein = obj.optDouble("protein", 0.0),
+                fat = obj.optDouble("fat", 0.0),
+                carbs = obj.optDouble("carbs", 0.0),
+                summary = obj.optString("summary", description).ifBlank { description },
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun buildNutritionEstimatePrompt(description: String): String = """
+        Ты - помощник по подсчёту калорий. Оцени суммарную пищевую ценность следующего приёма
+        пищи целиком (все перечисленные компоненты вместе), используя типичные значения для
+        похожих продуктов и блюд. Верни ТОЛЬКО валидный JSON без пояснений и без markdown, строго
+        в формате:
+        {"calories": число ккал, "protein": число грамм белка, "fat": число грамм жира, "carbs": число грамм углеводов, "summary": "короткое название блюда на русском, 2-4 слова"}
+
+        Описание приёма пищи: "$description"
+    """.trimIndent()
+
     private fun buildPrompt(text: String): String = """
         Ты - классификатор команд для личного Android-ассистента. Разбери фразу пользователя
         и верни ТОЛЬКО валидный JSON без пояснений и без markdown-разметки, строго в одном

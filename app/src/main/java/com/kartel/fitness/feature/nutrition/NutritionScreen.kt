@@ -169,7 +169,8 @@ private fun MealRow(meal: MealLogEntity, onDelete: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text("${meal.foodName} · ${meal.grams}г", style = MaterialTheme.typography.titleSmall)
+                val portionLabel = if (meal.isEstimate) "оценка ИИ" else "${meal.grams}г"
+                Text("${meal.foodName} · $portionLabel", style = MaterialTheme.typography.titleSmall)
                 Text(
                     "%.0f ккал · Б %.1f · Ж %.1f · У %.1f".format(
                         meal.calories, meal.protein, meal.fat, meal.carbs

@@ -57,14 +57,16 @@ fun AiTestScreen() {
     val viewModel: AiViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
+                val geminiNanoClient = GeminiNanoClient()
                 AiViewModel(
-                    GeminiNanoClient(),
+                    geminiNanoClient,
                     ActionRouter(
                         app.database.planDao(),
                         app.database.workDao(),
                         app.database.mealLogDao(),
                         FoodRepository(context),
                         CalendarBridge(context),
+                        geminiNanoClient,
                     ),
                 )
             }

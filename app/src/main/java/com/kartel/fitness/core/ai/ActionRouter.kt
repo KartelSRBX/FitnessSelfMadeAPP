@@ -25,6 +25,7 @@ class ActionRouter(
     private val mealLogDao: MealLogDao,
     private val foodRepository: FoodRepository,
     private val calendarBridge: CalendarBridge,
+    private val geminiNanoClient: GeminiNanoClient,
 ) {
     sealed class Result {
         data class Success(val message: String) : Result()
@@ -34,11 +35,12 @@ class ActionRouter(
     private val zone = ZoneId.systemDefault()
     private val dateFormat = SimpleDateFormat("d MMM", Locale("ru"))
 
-    suspend fun execute(intent: ModuleIntent): Result {
+    /** [originalText] — исходная фраза целиком, нужна для fallback-оценки Nutrition. */
+    suspend fun execute(intent: ModuleIntent, originalText: String): Result {
         val module = intent.module
             ?: return Result.NeedsManualInput("Не распознано уверенно — выбери модуль вручную")
         return when (module) {
-            AppModule.NUTRITION -> executeNutrition(intent.fields)
+            AppModule.NUTRITION -> executeNutrition(intent.fields, originalText)
             AppModule.PLANS -> executePlans(intent.fields)
             AppModule.WORK -> executeWork(intent.fields)
             AppModule.SCHEDULE -> executeSchedule(intent.fields)
@@ -46,26 +48,47 @@ class ActionRouter(
         }
     }
 
-    private suspend fun executeNutrition(fields: Map<String, String>): Result {
+    private suspend fun executeNutrition(fields: Map<String, String>, originalText: String): Result {
         val foodQuery = fields["food"]?.takeIf { it.isNotBlank() }
-            ?: return Result.NeedsManualInput("Не понял, какой продукт — залогируй вручную на вкладке Nutrition")
         val grams = fields["grams"]?.toIntOrNull()?.takeIf { it > 0 } ?: 100
-        val match = foodRepository.search(foodQuery).firstOrNull()
-            ?: return Result.NeedsManualInput("«$foodQuery» нет в локальной базе — добавь вручную на вкладке Nutrition")
+        val match = foodQuery?.let { foodRepository.search(it).firstOrNull() }
 
-        val factor = grams / 100.0
+        if (match != null) {
+            val factor = grams / 100.0
+            mealLogDao.insert(
+                MealLogEntity(
+                    foodName = match.name,
+                    grams = grams,
+                    calories = match.calories * factor,
+                    protein = match.protein * factor,
+                    fat = match.fat * factor,
+                    carbs = match.carbs * factor,
+                )
+            )
+            return Result.Success(
+                "Записано в Nutrition: ${match.name}, ${grams}г (~${(match.calories * factor).roundToInt()} ккал)"
+            )
+        }
+
+        // В локальной базе нет совпадения (или это составное блюдо) — просим модель
+        // оценить КБЖУ по всему описанию целиком (roadmap п.7, fallback).
+        val estimate = geminiNanoClient.estimateNutrition(originalText)
+            ?: return Result.NeedsManualInput(
+                "Не смог оценить блюдо — залогируй вручную на вкладке Nutrition"
+            )
         mealLogDao.insert(
             MealLogEntity(
-                foodName = match.name,
-                grams = grams,
-                calories = match.calories * factor,
-                protein = match.protein * factor,
-                fat = match.fat * factor,
-                carbs = match.carbs * factor,
+                foodName = estimate.summary,
+                grams = 0,
+                calories = estimate.calories,
+                protein = estimate.protein,
+                fat = estimate.fat,
+                carbs = estimate.carbs,
+                isEstimate = true,
             )
         )
         return Result.Success(
-            "Записано в Nutrition: ${match.name}, ${grams}г (~${(match.calories * factor).roundToInt()} ккал)"
+            "Записано в Nutrition (оценка ИИ): ${estimate.summary}, ~${estimate.calories.roundToInt()} ккал"
         )
     }
 
