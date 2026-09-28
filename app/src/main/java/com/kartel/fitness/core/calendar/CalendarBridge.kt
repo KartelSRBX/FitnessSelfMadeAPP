@@ -34,6 +34,13 @@ class CalendarBridge(private val context: Context) {
         return read == PackageManager.PERMISSION_GRANTED && write == PackageManager.PERMISSION_GRANTED
     }
 
+    /**
+     * Id локального календаря-аккаунта "Мои задачи и расписание", создаёт его
+     * при первом обращении. Публичный — им пользуются и Work (дедлайны), и
+     * Schedule (свои события), чтобы все события лежали в одном месте.
+     */
+    fun ensureCalendarId(): Long? = ensureLocalCalendarId()
+
     private fun ensureLocalCalendarId(): Long? {
         if (!hasCalendarPermission()) return null
         val resolver = context.contentResolver
@@ -129,4 +136,90 @@ class CalendarBridge(private val context: Context) {
             null,
         )
     }
+
+    /**
+     * Произвольное событие (модуль Schedule) — в отличие от [upsertDeadlineEvent]
+     * даёт задать точное начало/конец и описание.
+     */
+    fun insertEvent(title: String, description: String, startMillis: Long, endMillis: Long): Long? {
+        if (!hasCalendarPermission()) return null
+        val calendarId = ensureLocalCalendarId() ?: return null
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.CALENDAR_ID, calendarId)
+            put(CalendarContract.Events.TITLE, title)
+            put(CalendarContract.Events.DESCRIPTION, description)
+            put(CalendarContract.Events.DTSTART, startMillis)
+            put(CalendarContract.Events.DTEND, endMillis)
+            put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+            put(CalendarContract.Events.HAS_ALARM, 1)
+        }
+        val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values) ?: return null
+        val newId = ContentUris.parseId(uri)
+        val reminderValues = ContentValues().apply {
+            put(CalendarContract.Reminders.EVENT_ID, newId)
+            put(CalendarContract.Reminders.MINUTES, DEFAULT_REMINDER_MINUTES_BEFORE)
+            put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+        }
+        context.contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, reminderValues)
+        return newId
+    }
+
+    fun updateEvent(eventId: Long, title: String, description: String, startMillis: Long, endMillis: Long) {
+        if (!hasCalendarPermission()) return
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.TITLE, title)
+            put(CalendarContract.Events.DESCRIPTION, description)
+            put(CalendarContract.Events.DTSTART, startMillis)
+            put(CalendarContract.Events.DTEND, endMillis)
+            put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+        }
+        context.contentResolver.update(
+            ContentUris.appendId(CalendarContract.Events.CONTENT_URI.buildUpon(), eventId).build(),
+            values,
+            null,
+            null,
+        )
+    }
+
+    /**
+     * Объединённый список событий в календаре приложения: свои события Schedule
+     * и дедлайны Work лежат в одном календаре-аккаунте, так что запрос один и тот же.
+     */
+    fun queryEvents(): List<CalendarEvent> {
+        if (!hasCalendarPermission()) return emptyList()
+        val calendarId = ensureLocalCalendarId() ?: return emptyList()
+        val events = mutableListOf<CalendarEvent>()
+        context.contentResolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            arrayOf(
+                CalendarContract.Events._ID,
+                CalendarContract.Events.TITLE,
+                CalendarContract.Events.DESCRIPTION,
+                CalendarContract.Events.DTSTART,
+                CalendarContract.Events.DTEND,
+            ),
+            "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DELETED} = 0",
+            arrayOf(calendarId.toString()),
+            "${CalendarContract.Events.DTSTART} ASC",
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                events += CalendarEvent(
+                    id = cursor.getLong(0),
+                    title = cursor.getString(1) ?: "",
+                    description = cursor.getString(2) ?: "",
+                    startMillis = cursor.getLong(3),
+                    endMillis = cursor.getLong(4),
+                )
+            }
+        }
+        return events
+    }
 }
+
+data class CalendarEvent(
+    val id: Long,
+    val title: String,
+    val description: String,
+    val startMillis: Long,
+    val endMillis: Long,
+)
