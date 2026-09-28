@@ -1,6 +1,9 @@
 package com.kartel.fitness.feature.work
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +51,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -56,6 +63,7 @@ import com.kartel.fitness.FitnessApp
 import com.kartel.fitness.core.calendar.CalendarBridge
 import com.kartel.fitness.core.data.work.WorkEntity
 import com.kartel.fitness.core.data.work.WorkStatus
+import com.kartel.fitness.core.notifications.ReminderScheduler
 import com.kartel.fitness.core.ui.GradientFab
 import com.kartel.fitness.core.ui.GradientHeader
 import java.text.SimpleDateFormat
@@ -73,7 +81,7 @@ fun WorkScreen() {
     val app = context.applicationContext as FitnessApp
     val viewModel: WorkViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { WorkViewModel(app.database.workDao(), CalendarBridge(context)) }
+            initializer { WorkViewModel(app.database.workDao(), CalendarBridge(context), ReminderScheduler(context)) }
         }
     )
 
@@ -85,6 +93,19 @@ fun WorkScreen() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         calendarPermissionGranted = result.values.all { it }
+    }
+
+    val reminderScheduler = remember { ReminderScheduler(context) }
+    var exactAlarmGranted by remember { mutableStateOf(reminderScheduler.hasExactAlarmPermission()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                exactAlarmGranted = reminderScheduler.hasExactAlarmPermission()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -114,6 +135,32 @@ fun WorkScreen() {
                         TextButton(onClick = {
                             permissionLauncher.launch(
                                 arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
+                            )
+                        }) { Text("Разрешить") }
+                    }
+                }
+            }
+
+            if (!exactAlarmGranted) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp, 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            "Разреши точные напоминания, чтобы уведомление о дедлайне пришло вовремя",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
                             )
                         }) { Text("Разрешить") }
                     }

@@ -53,6 +53,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.kartel.fitness.core.calendar.CalendarBridge
 import com.kartel.fitness.core.calendar.CalendarEvent
+import com.kartel.fitness.core.notifications.ReminderScheduler
 import com.kartel.fitness.core.ui.GradientFab
 import com.kartel.fitness.core.ui.GradientHeader
 import java.text.SimpleDateFormat
@@ -70,7 +71,7 @@ fun ScheduleScreen() {
     val context = LocalContext.current
     val viewModel: ScheduleViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { ScheduleViewModel(CalendarBridge(context)) }
+            initializer { ScheduleViewModel(CalendarBridge(context), ReminderScheduler(context)) }
         }
     )
 

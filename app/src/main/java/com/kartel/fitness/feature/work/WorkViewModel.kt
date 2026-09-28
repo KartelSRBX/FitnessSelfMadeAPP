@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.kartel.fitness.core.calendar.CalendarBridge
 import com.kartel.fitness.core.data.work.WorkDao
 import com.kartel.fitness.core.data.work.WorkEntity
+import com.kartel.fitness.core.data.work.WorkStatus
+import com.kartel.fitness.core.notifications.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +17,12 @@ import kotlinx.coroutines.withContext
 class WorkViewModel(
     private val dao: WorkDao,
     private val calendarBridge: CalendarBridge,
+    private val reminderScheduler: ReminderScheduler,
 ) : ViewModel() {
+
+    companion object {
+        private const val DEADLINE_LEAD_MILLIS = 60 * 60 * 1000L // напомнить за час до дедлайна
+    }
 
     val tasks: StateFlow<List<WorkEntity>> = dao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -35,12 +42,20 @@ class WorkViewModel(
             val id = dao.upsert(task)
             task = task.copy(id = id)
             syncCalendar(task)
+            scheduleReminder(task)
         }
     }
 
     fun cycleStatus(task: WorkEntity) {
         viewModelScope.launch {
-            dao.update(task.copy(status = task.status.next(), updatedAt = System.currentTimeMillis()))
+            val updated = task.copy(status = task.status.next(), updatedAt = System.currentTimeMillis())
+            dao.update(updated)
+            // Задача сделана или снова в работе — напоминание о дедлайне больше не актуально/пересоздастся.
+            if (updated.status == WorkStatus.DONE) {
+                reminderScheduler.cancel("work-${task.id}")
+            } else {
+                scheduleReminder(updated)
+            }
         }
     }
 
@@ -49,8 +64,23 @@ class WorkViewModel(
             task.calendarEventId?.let { eventId ->
                 withContext(Dispatchers.IO) { calendarBridge.deleteEvent(eventId) }
             }
+            reminderScheduler.cancel("work-${task.id}")
             dao.delete(task)
         }
+    }
+
+    private fun scheduleReminder(task: WorkEntity) {
+        val deadline = task.deadlineMillis
+        if (deadline == null) {
+            reminderScheduler.cancel("work-${task.id}")
+            return
+        }
+        reminderScheduler.schedule(
+            key = "work-${task.id}",
+            triggerAtMillis = deadline - DEADLINE_LEAD_MILLIS,
+            title = "Дедлайн через час: ${task.title}",
+            body = if (task.project.isNotBlank()) task.project else "Work",
+        )
     }
 
     private suspend fun syncCalendar(task: WorkEntity) {
