@@ -11,6 +11,9 @@ interface MealLogDao {
     @Query("SELECT * FROM meal_log WHERE loggedAt >= :sinceMillis ORDER BY loggedAt DESC")
     fun observeSince(sinceMillis: Long): Flow<List<MealLogEntity>>
 
+    @Query("SELECT * FROM meal_log ORDER BY loggedAt DESC")
+    suspend fun getAll(): List<MealLogEntity>
+
     @Insert
     suspend fun insert(entry: MealLogEntity)
 

@@ -12,6 +12,7 @@ import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 /**
@@ -75,6 +76,26 @@ class HealthConnectBridge(private val context: Context) {
         ).records
         val latest = records.maxByOrNull { it.endTime } ?: return null
         return Duration.between(latest.startTime, latest.endTime)
+    }
+
+    /** Шаги по дням за последние [days] дней, включая сегодня (для графика в Analytics). */
+    suspend fun readStepsForLastDays(days: Int): List<Pair<LocalDate, Long>> {
+        val client = client() ?: return emptyList()
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now()
+        val startDate = today.minusDays((days - 1).toLong())
+        return (0 until days).map { offset ->
+            val date = startDate.plusDays(offset.toLong())
+            val start = date.atStartOfDay(zone).toInstant()
+            val end = date.plusDays(1).atStartOfDay(zone).toInstant()
+            val response = client.aggregate(
+                AggregateRequest(
+                    metrics = setOf(StepsRecord.COUNT_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(start, end),
+                )
+            )
+            date to (response[StepsRecord.COUNT_TOTAL] ?: 0)
+        }
     }
 
     /** Последнее измерение пульса (уд/мин) за последние сутки, если есть. */
