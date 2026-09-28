@@ -6,6 +6,8 @@ import com.kartel.fitness.core.data.nutrition.MealLogDao
 import com.kartel.fitness.core.data.nutrition.MealLogEntity
 import com.kartel.fitness.core.data.plans.PlanDao
 import com.kartel.fitness.core.data.plans.PlanEntity
+import com.kartel.fitness.core.data.work.WorkChecklistDao
+import com.kartel.fitness.core.data.work.WorkChecklistItem
 import com.kartel.fitness.core.data.work.WorkDao
 import com.kartel.fitness.core.data.work.WorkEntity
 
@@ -18,12 +20,13 @@ import com.kartel.fitness.core.data.work.WorkEntity
  * fallbackToDestructiveMigration(), см. TODO там же.
  */
 @Database(
-    entities = [PlanEntity::class, WorkEntity::class, MealLogEntity::class],
-    version = 4,
+    entities = [PlanEntity::class, WorkEntity::class, MealLogEntity::class, WorkChecklistItem::class],
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun planDao(): PlanDao
     abstract fun workDao(): WorkDao
     abstract fun mealLogDao(): MealLogDao
+    abstract fun workChecklistDao(): WorkChecklistDao
 }

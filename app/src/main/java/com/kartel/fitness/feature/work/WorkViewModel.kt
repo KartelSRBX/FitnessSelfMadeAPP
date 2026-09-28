@@ -3,11 +3,14 @@ package com.kartel.fitness.feature.work
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kartel.fitness.core.calendar.CalendarBridge
+import com.kartel.fitness.core.data.work.WorkChecklistDao
+import com.kartel.fitness.core.data.work.WorkChecklistItem
 import com.kartel.fitness.core.data.work.WorkDao
 import com.kartel.fitness.core.data.work.WorkEntity
 import com.kartel.fitness.core.data.work.WorkStatus
 import com.kartel.fitness.core.notifications.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -18,6 +21,7 @@ class WorkViewModel(
     private val dao: WorkDao,
     private val calendarBridge: CalendarBridge,
     private val reminderScheduler: ReminderScheduler,
+    private val checklistDao: WorkChecklistDao,
 ) : ViewModel() {
 
     companion object {
@@ -65,8 +69,24 @@ class WorkViewModel(
                 withContext(Dispatchers.IO) { calendarBridge.deleteEvent(eventId) }
             }
             reminderScheduler.cancel("work-${task.id}")
+            checklistDao.deleteAllForTask(task.id)
             dao.delete(task)
         }
+    }
+
+    fun checklistFor(taskId: Long): Flow<List<WorkChecklistItem>> = checklistDao.observeForTask(taskId)
+
+    fun addChecklistItem(taskId: Long, text: String) {
+        if (text.isBlank()) return
+        viewModelScope.launch { checklistDao.insert(WorkChecklistItem(workTaskId = taskId, text = text.trim())) }
+    }
+
+    fun toggleChecklistItem(item: WorkChecklistItem) {
+        viewModelScope.launch { checklistDao.update(item.copy(isDone = !item.isDone)) }
+    }
+
+    fun deleteChecklistItem(item: WorkChecklistItem) {
+        viewModelScope.launch { checklistDao.delete(item) }
     }
 
     private fun scheduleReminder(task: WorkEntity) {

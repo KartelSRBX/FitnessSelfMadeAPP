@@ -38,13 +38,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,7 +56,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,7 +73,9 @@ import com.kartel.fitness.core.notifications.ReminderScheduler
 import com.kartel.fitness.core.ui.GradientFab
 import com.kartel.fitness.core.ui.GradientHeader
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
 
 /**
  * Модуль Work: задачи с дедлайнами и статусами (roadmap п.4).
@@ -81,12 +89,20 @@ fun WorkScreen() {
     val app = context.applicationContext as FitnessApp
     val viewModel: WorkViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { WorkViewModel(app.database.workDao(), CalendarBridge(context), ReminderScheduler(context)) }
+            initializer {
+                WorkViewModel(
+                    app.database.workDao(),
+                    CalendarBridge(context),
+                    ReminderScheduler(context),
+                    app.database.workChecklistDao(),
+                )
+            }
         }
     )
 
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
+    var checklistTask by remember { mutableStateOf<WorkEntity?>(null) }
     var calendarPermissionGranted by remember { mutableStateOf(viewModel.hasCalendarPermission) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -183,8 +199,10 @@ fun WorkScreen() {
                     items(tasks, key = { it.id }) { task ->
                         WorkCard(
                             task = task,
+                            viewModel = viewModel,
                             onCycleStatus = { viewModel.cycleStatus(task) },
                             onDelete = { viewModel.deleteTask(task) },
+                            onOpenChecklist = { checklistTask = task },
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -203,21 +221,35 @@ fun WorkScreen() {
             },
         )
     }
+
+    checklistTask?.let { task ->
+        ChecklistDialog(task = task, viewModel = viewModel, onDismiss = { checklistTask = null })
+    }
 }
 
-private val dateFormat = SimpleDateFormat("d MMM yyyy", Locale("ru"))
+private val dateFormat = SimpleDateFormat("d MMM, HH:mm", Locale("ru"))
+private val plainDateFormat = SimpleDateFormat("d MMM yyyy", Locale("ru"))
 
 @Composable
-private fun WorkCard(task: WorkEntity, onCycleStatus: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+private fun WorkCard(
+    task: WorkEntity,
+    viewModel: WorkViewModel,
+    onCycleStatus: () -> Unit,
+    onDelete: () -> Unit,
+    onOpenChecklist: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val (statusContainer, statusContent, statusIcon) = when (task.status) {
         WorkStatus.TODO -> Triple(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant, null)
         WorkStatus.IN_PROGRESS -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, Icons.Filled.HourglassTop)
         WorkStatus.DONE -> Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, Icons.Filled.CheckCircle)
     }
+    val checklist by viewModel.checklistFor(task.id).collectAsStateWithLifecycle(initialValue = emptyList())
 
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        onClick = onOpenChecklist,
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -256,6 +288,22 @@ private fun WorkCard(task: WorkEntity, onCycleStatus: () -> Unit, onDelete: () -
                     Text(dateFormat.format(task.deadlineMillis), style = MaterialTheme.typography.labelMedium)
                 }
             }
+            if (checklist.isNotEmpty()) {
+                val done = checklist.count { it.isDone }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                    Icon(
+                        Icons.Filled.Checklist,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        " $done/${checklist.size} в чеклисте",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -270,8 +318,11 @@ private fun AddWorkDialog(
     var description by remember { mutableStateOf("") }
     var project by remember { mutableStateOf("") }
     var deadlineEnabled by remember { mutableStateOf(false) }
-    var deadlineMillis by remember { mutableStateOf<Long?>(null) }
+    var deadlineDateMillis by remember { mutableStateOf<Long?>(null) }
+    var deadlineHour by remember { mutableIntStateOf(18) }
+    var deadlineMinute by remember { mutableIntStateOf(0) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -303,24 +354,34 @@ private fun AddWorkDialog(
                         checked = deadlineEnabled,
                         onCheckedChange = {
                             deadlineEnabled = it
-                            if (it && deadlineMillis == null) showDatePicker = true
+                            if (it && deadlineDateMillis == null) showDatePicker = true
                         },
                     )
                     Text("Установить дедлайн")
                 }
                 if (deadlineEnabled) {
-                    TextButton(onClick = { showDatePicker = true }) {
-                        Text(
-                            deadlineMillis?.let { "Дедлайн: ${dateFormat.format(it)}" } ?: "Выбрать дату"
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { showDatePicker = true }) {
+                            Text(deadlineDateMillis?.let { plainDateFormat.format(it) } ?: "Выбрать дату")
+                        }
+                        TextButton(onClick = { showTimePicker = true }) {
+                            Text("%02d:%02d".format(deadlineHour, deadlineMinute))
+                        }
                     }
                 }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(title, description, project, if (deadlineEnabled) deadlineMillis else null) },
-                enabled = title.isNotBlank() && (!deadlineEnabled || deadlineMillis != null),
+                onClick = {
+                    val deadline = if (deadlineEnabled) {
+                        deadlineDateMillis?.let { combineDateAndTime(it, deadlineHour, deadlineMinute) }
+                    } else {
+                        null
+                    }
+                    onConfirm(title, description, project, deadline)
+                },
+                enabled = title.isNotBlank() && (!deadlineEnabled || deadlineDateMillis != null),
             ) { Text("Добавить") }
         },
         dismissButton = {
@@ -329,12 +390,12 @@ private fun AddWorkDialog(
     )
 
     if (showDatePicker) {
-        val state = rememberDatePickerState(initialSelectedDateMillis = deadlineMillis)
+        val state = rememberDatePickerState(initialSelectedDateMillis = deadlineDateMillis)
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    deadlineMillis = state.selectedDateMillis
+                    deadlineDateMillis = state.selectedDateMillis
                     showDatePicker = false
                 }) { Text("Ок") }
             },
@@ -345,4 +406,106 @@ private fun AddWorkDialog(
             DatePicker(state = state)
         }
     }
+
+    if (showTimePicker) {
+        val timeState = rememberTimePickerState(initialHour = deadlineHour, initialMinute = deadlineMinute, is24Hour = true)
+        Dialog(onDismissRequest = { showTimePicker = false }) {
+            Surface(shape = MaterialTheme.shapes.extraLarge) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    TimePicker(state = timeState)
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showTimePicker = false }) { Text("Отмена") }
+                        TextButton(onClick = {
+                            deadlineHour = timeState.hour
+                            deadlineMinute = timeState.minute
+                            showTimePicker = false
+                        }) { Text("Ок") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** DatePicker отдаёт полночь UTC выбранного дня — переносим год/месяц/день на локальные час/минуту. */
+private fun combineDateAndTime(dateMillisUtcMidnight: Long, hour: Int, minute: Int): Long {
+    val utc = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = dateMillisUtcMidnight }
+    val local = Calendar.getInstance().apply {
+        set(utc.get(Calendar.YEAR), utc.get(Calendar.MONTH), utc.get(Calendar.DAY_OF_MONTH), hour, minute, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    return local.timeInMillis
+}
+
+/** Чеклист (подзадачи) внутри задачи Work. */
+@Composable
+private fun ChecklistDialog(task: WorkEntity, viewModel: WorkViewModel, onDismiss: () -> Unit) {
+    val items by viewModel.checklistFor(task.id).collectAsStateWithLifecycle(initialValue = emptyList())
+    var newItemText by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(task.title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (items.isEmpty()) {
+                    Text(
+                        "Пунктов пока нет — добавь первый ниже",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                } else {
+                    items.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = item.isDone,
+                                onCheckedChange = { viewModel.toggleChecklistItem(item) },
+                            )
+                            Text(
+                                item.text,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textDecoration = if (item.isDone) TextDecoration.LineThrough else null,
+                                color = if (item.isDone) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(onClick = { viewModel.deleteChecklistItem(item) }) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "Удалить пункт",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                    OutlinedTextField(
+                        value = newItemText,
+                        onValueChange = { newItemText = it },
+                        label = { Text("Новый пункт") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(
+                        onClick = {
+                            viewModel.addChecklistItem(task.id, newItemText)
+                            newItemText = ""
+                        },
+                        enabled = newItemText.isNotBlank(),
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Добавить пункт")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Готово") }
+        },
+    )
 }
