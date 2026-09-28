@@ -1,19 +1,19 @@
 package com.kartel.fitness.core.data
 
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import com.kartel.fitness.core.data.plans.PlanDao
+import com.kartel.fitness.core.data.plans.PlanEntity
+
 /**
- * Единая локальная Room-база для всех модулей (Plans/Work/Schedule-кэш/Nutrition).
+ * Единая локальная Room-база для всех модулей (Plans/Work/Nutrition и т.п.).
  * Health и Schedule читают/пишут в основном через системные Health Connect
  * и Calendar Provider — здесь хранится только то, что этим системам не принадлежит.
  *
- * TODO: как только появится первая entity (roadmap п.3 "Plans"), превратить это
- * в абстрактный класс:
- *
- *   @Database(entities = [PlanEntity::class, ...], version = 1, exportSchema = false)
- *   abstract class AppDatabase : RoomDatabase() {
- *       abstract fun planDao(): PlanDao
- *   }
- *
- * Room не даёт скомпилировать @Database без entities, поэтому до первой
- * реализации модуля класс оставлен пустой заглушкой.
+ * TODO: по мере реализации Work/Nutrition добавлять их entities и DAO сюда же,
+ * поднимая version и добавляя миграции.
  */
-object AppDatabase
+@Database(entities = [PlanEntity::class], version = 1, exportSchema = false)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun planDao(): PlanDao
+}

@@ -12,6 +12,7 @@
          системные permission-теги для него добавляются на шаге реализации модуля Health. -->
 
     <application
+        android:name=".FitnessApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
