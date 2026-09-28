@@ -4,16 +4,20 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.kartel.fitness.core.data.plans.PlanDao
 import com.kartel.fitness.core.data.plans.PlanEntity
+import com.kartel.fitness.core.data.work.WorkDao
+import com.kartel.fitness.core.data.work.WorkEntity
 
 /**
  * Единая локальная Room-база для всех модулей (Plans/Work/Nutrition и т.п.).
  * Health и Schedule читают/пишут в основном через системные Health Connect
  * и Calendar Provider — здесь хранится только то, что этим системам не принадлежит.
  *
- * TODO: по мере реализации Work/Nutrition добавлять их entities и DAO сюда же,
- * поднимая version и добавляя миграции.
+ * TODO: по мере реализации Nutrition добавлять его entities и DAO сюда же.
+ * Миграции пока не пишутся (ранняя разработка) — FitnessApp использует
+ * fallbackToDestructiveMigration(), см. TODO там же.
  */
-@Database(entities = [PlanEntity::class], version = 1, exportSchema = false)
+@Database(entities = [PlanEntity::class, WorkEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun planDao(): PlanDao
+    abstract fun workDao(): WorkDao
 }
