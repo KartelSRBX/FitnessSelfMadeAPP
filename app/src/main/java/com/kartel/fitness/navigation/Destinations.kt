@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.kartel.fitness.R
@@ -21,4 +22,5 @@ enum class Destination(
     HEALTH("health", R.string.nav_health, Icons.Filled.Favorite),
     NUTRITION("nutrition", R.string.nav_nutrition, Icons.Filled.Restaurant),
     ANALYTICS("analytics", R.string.nav_analytics, Icons.Filled.Analytics),
+    AI("ai", R.string.nav_ai, Icons.Filled.Psychology),
 }

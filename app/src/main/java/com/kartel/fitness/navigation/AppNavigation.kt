@@ -15,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.kartel.fitness.feature.ai.AiTestScreen
 import com.kartel.fitness.feature.analytics.AnalyticsScreen
 import com.kartel.fitness.feature.health.HealthScreen
 import com.kartel.fitness.feature.nutrition.NutritionScreen
@@ -38,6 +39,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             composable(Destination.HEALTH.route) { HealthScreen() }
             composable(Destination.NUTRITION.route) { NutritionScreen() }
             composable(Destination.ANALYTICS.route) { AnalyticsScreen() }
+            composable(Destination.AI.route) { AiTestScreen() }
         }
     }
 }

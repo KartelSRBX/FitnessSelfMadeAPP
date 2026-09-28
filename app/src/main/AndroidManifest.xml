@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Ядро мини-ИИ: скачивание модели Gemini Nano (AICore) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Голосовой ввод (модуль core/voice) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
