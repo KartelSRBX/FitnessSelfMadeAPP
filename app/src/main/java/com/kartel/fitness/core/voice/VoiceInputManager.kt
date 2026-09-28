@@ -21,6 +21,7 @@ class VoiceInputManager(private val context: Context) {
         onResult: (String) -> Unit,
         onError: (String) -> Unit,
         onReady: () -> Unit = {},
+        preferOffline: Boolean = true,
     ) {
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
             onError("Распознавание речи недоступно на этом устройстве")
@@ -34,7 +35,7 @@ class VoiceInputManager(private val context: Context) {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, preferOffline)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         }
 
@@ -48,7 +49,18 @@ class VoiceInputManager(private val context: Context) {
                 if (text.isNullOrBlank()) onError("Не удалось распознать речь") else onResult(text)
             }
 
-            override fun onError(error: Int) = onError(describeError(error))
+            override fun onError(error: Int) {
+                // Офлайн-пакет языка не скачан на устройстве — тихо пробуем ещё раз через
+                // онлайн-распознавание вместо того, чтобы сразу показывать ошибку пользователю.
+                val isLanguagePackIssue = error == SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED ||
+                    error == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE ||
+                    error == SpeechRecognizer.ERROR_CLIENT
+                if (preferOffline && isLanguagePackIssue) {
+                    startListening(onResult, onError, onReady, preferOffline = false)
+                } else {
+                    onError(describeError(error))
+                }
+            }
 
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {}
